@@ -1,0 +1,5 @@
+FROM postgres:latest
+
+ENV POSTGRES_USER=dbuser
+ENV POSTGRES_PASSWORD=password
+ENV POSTGRES_DB=cars

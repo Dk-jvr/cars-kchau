@@ -1,7 +1,16 @@
 package main
 
-import "fmt"
+import (
+	"github.com/Dk-jvr/cars-kchau.git/DataBase"
+	_ "github.com/lib/pq"
+	"log"
+	"net/http"
+)
 
 func main() {
-	fmt.Println("First step...")
+
+	database := DataBase.InitDataBase()
+	defer database.Close()
+
+	log.Fatal(http.ListenAndServe(":8080", nil))
 }
