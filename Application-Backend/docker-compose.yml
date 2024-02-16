@@ -2,7 +2,7 @@ services:
   postgres:
     build:
       context: .
-      dockerfile: postgres.dockerfile
+      dockerfile: Dockerfile
     image: "postgres"
     container_name: "pg_service"
     environment:
