@@ -31,6 +31,10 @@ func InitDataBase() *sql.DB {
 
 func CreateDataBase() error {
 	const createTables = `
+			DROP TABLE IF EXISTS Users CASCADE ;
+			DROP TABLE IF EXISTS UserData;
+			DROP TABLE IF EXISTS UserCars;
+
 			CREATE TABLE IF NOT EXISTS Users (
 			    user_id UUID PRIMARY KEY,
 			    username TEXT UNIQUE NOT NULL,
@@ -69,6 +73,5 @@ func CreateUser(user Models.User, errChan chan<- error) {
 		defer dbMutex.Unlock()
 		_, err := db.Exec(queryString, uuid.New(), user.Username, user.Email, sha256Password)
 		errChan <- err
-		close(errChan)
 	}(user)
 }
