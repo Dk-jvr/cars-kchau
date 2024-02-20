@@ -65,13 +65,29 @@ func CreateDataBase() error {
 	return err
 }
 
-func CreateUser(user Models.User, errChan chan<- error) {
+func CreateUser(user Models.User) error {
+	var err error
 	const queryString = `INSERT INTO Users VALUES ($1, $2, $3, $4);`
 	sha256Password := Models.HashPassword(user.Password)
-	go func(user Models.User) {
+	go func(user Models.User, err error) {
 		dbMutex.Lock()
 		defer dbMutex.Unlock()
-		_, err := db.Exec(queryString, uuid.New(), user.Username, user.Email, sha256Password)
-		errChan <- err
-	}(user)
+		_, err = db.Exec(queryString, uuid.New(), user.Username, user.Email, sha256Password)
+	}(user, err)
+	return err
+}
+
+func CheckUser(user Models.AuthUser) (bool, string) {
+	var username string
+	sha256Password := Models.HashPassword(user.Password)
+	result, _ := db.Exec(`SELECT username FROM Users
+									WHERE email = $1 AND password = $2`, user.Email, sha256Password)
+	db.QueryRow(`SELECT username FROM Users
+									WHERE email = $1 AND password = $2`, user.Email, sha256Password).Scan(&username)
+
+	if rows, _ := result.RowsAffected(); rows == 1 {
+		return true, username
+	} else {
+		return false, ""
+	}
 }

@@ -13,7 +13,8 @@ func main() {
 	database := DataBase.InitDataBase()
 	defer database.Close()
 
-	http.HandleFunc("/registration", Controller.Registration)
+	http.HandleFunc("/cars/registration", Controller.Registration)
+	http.HandleFunc("/cars/authentication", Controller.Authentication)
 
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }

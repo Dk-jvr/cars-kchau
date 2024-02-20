@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"github.com/golang-jwt/jwt/v5"
+	"net/http"
 	"time"
 )
 
@@ -19,30 +20,32 @@ func init() {
 	secretKey, _ = ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 }
 
-func RegistrationResponse(data map[string]string, message string, err string, tokenStr string) []byte {
-	data["Message"] = message
-	data["jwt"] = tokenStr
-	data["Error"] = err
-	jsonResponse, _ := json.Marshal(data)
-	return jsonResponse
-}
-
 func HashPassword(password string) string {
 	hash := sha256.New()
 	hash.Write([]byte(password))
 	return hex.EncodeToString(hash.Sum(nil))
 }
 
-func CreateToken(user User, errChan chan<- error, tokenChan chan<- string) {
+func CreateToken(username string) (string, error) {
 	claims := jwt.RegisteredClaims{
 		ExpiresAt: jwt.NewNumericDate(time.Now().Add(1 * time.Hour)),
 		IssuedAt:  jwt.NewNumericDate(time.Now()),
-		Subject:   user.Username,
+		Subject:   username,
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodES256, claims)
 	tokenStr, err := token.SignedString(secretKey)
-	errChan <- err
-	tokenChan <- tokenStr
-	close(errChan)
-	close(tokenChan)
+	return tokenStr, err
+}
+
+func ErrMaker(writer http.ResponseWriter, httpStatus int, err string, tokenStr string) {
+	response := make(map[string]string)
+	response["jwt"] = tokenStr
+	response["Error"] = err
+	jsonResponse, _ := json.Marshal(response)
+	writer.WriteHeader(httpStatus)
+	writer.Write(jsonResponse)
+}
+
+func CheckUser(user AuthUser, errChan <-chan error, tokenChan <-chan string) {
+
 }

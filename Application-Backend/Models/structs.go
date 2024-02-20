@@ -6,4 +6,8 @@ type (
 		Username string `json:"username"`
 		Password string `json:"password"`
 	}
+	AuthUser struct {
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}
 )

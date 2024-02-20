@@ -2,7 +2,6 @@ package Controller
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/Dk-jvr/cars-kchau.git/DataBase"
 	"github.com/Dk-jvr/cars-kchau.git/Models"
 	"net/http"
@@ -10,37 +9,50 @@ import (
 
 func Registration(writer http.ResponseWriter, request *http.Request) {
 	var user Models.User
-	response := make(map[string]string)
-	errChan := make(chan error)
-	tokenChan := make(chan string)
-	fmt.Println(request.Body)
+	var tokenStr string
 	decoder := json.NewDecoder(request.Body)
 	err := decoder.Decode(&user)
 
 	writer.Header().Set("Content-Type", "application/json")
 	if err != nil {
-		writer.WriteHeader(http.StatusBadRequest)
-		jsonResponse := Models.RegistrationResponse(response, "Error while receiving data...", err.Error(), "")
-		writer.Write(jsonResponse)
+		Models.ErrMaker(writer, http.StatusBadRequest, err.Error(), "")
+		return
+	}
+	err = DataBase.CreateUser(user)
+	if err != nil {
+		Models.ErrMaker(writer, http.StatusInternalServerError, err.Error(), "")
+		return
+	}
+	tokenStr, err = Models.CreateToken(user.Username)
+	if err != nil {
+		Models.ErrMaker(writer, http.StatusInternalServerError, err.Error(), "")
+		return
+	}
+	Models.ErrMaker(writer, http.StatusOK, "", tokenStr)
+	return
+}
+
+func Authentication(writer http.ResponseWriter, request *http.Request) {
+	var user Models.AuthUser
+	var tokenStr string
+	decoder := json.NewDecoder(request.Body)
+	err := decoder.Decode(&user)
+	if err != nil {
+		Models.ErrMaker(writer, http.StatusBadRequest, err.Error(), "")
+		return
+	}
+	isContain, username := DataBase.CheckUser(user)
+	if isContain {
+		tokenStr, err = Models.CreateToken(username)
+		if err != nil {
+			Models.ErrMaker(writer, http.StatusInternalServerError, err.Error(), "")
+			return
+		}
+		Models.ErrMaker(writer, http.StatusOK, "", tokenStr)
 		return
 
-	}
-	go DataBase.CreateUser(user, errChan)
-	if err = <-errChan; err != nil {
-		writer.WriteHeader(http.StatusInternalServerError)
-		jsonResponse := Models.RegistrationResponse(response, "Error while receiving data...", err.Error(), "null")
-		writer.Write(jsonResponse)
+	} else {
+		Models.ErrMaker(writer, http.StatusNotFound, "User Not Found...", "")
 		return
 	}
-	go Models.CreateToken(user, errChan, tokenChan)
-	if err = <-errChan; err != nil {
-		writer.WriteHeader(http.StatusInternalServerError)
-		jsonResponse := Models.RegistrationResponse(response, "Error while creation token...", err.Error(), "null")
-		writer.Write(jsonResponse)
-		return
-	}
-	writer.WriteHeader(http.StatusOK)
-	jsonResponse := Models.RegistrationResponse(response, "Successful", "null", <-tokenChan)
-	writer.Write(jsonResponse)
-	return
 }
