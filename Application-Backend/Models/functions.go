@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"github.com/golang-jwt/jwt/v5"
 	"net/http"
 	"time"
@@ -37,7 +38,7 @@ func CreateToken(username string) (string, error) {
 	return tokenStr, err
 }
 
-func ErrMaker(writer http.ResponseWriter, httpStatus int, err string, tokenStr string) {
+func ErrAuthMaker(writer http.ResponseWriter, httpStatus int, err string, tokenStr string) {
 	response := make(map[string]string)
 	response["jwt"] = tokenStr
 	response["Error"] = err
@@ -46,6 +47,25 @@ func ErrMaker(writer http.ResponseWriter, httpStatus int, err string, tokenStr s
 	writer.Write(jsonResponse)
 }
 
-func CheckUser(user AuthUser, errChan <-chan error, tokenChan <-chan string) {
+func ErrValidationMaker(writer http.ResponseWriter, httpStatus int, err string) {
+	response := make(map[string]string)
+	response["Error"] = err
+	jsonResponse, _ := json.Marshal(response)
+	writer.WriteHeader(httpStatus)
+	writer.Write(jsonResponse)
+}
 
+func TokenValidation(tokenStr string) error {
+	token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
+		return &secretKey.PublicKey, nil
+	})
+	if err != nil {
+		return err
+	}
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if ok && token.Valid && time.Now().Unix() < int64(claims["exp"].(float64)) {
+		return nil
+	} else {
+		return errors.New("Invalid Token Error")
+	}
 }

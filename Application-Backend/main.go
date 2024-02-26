@@ -15,6 +15,8 @@ func main() {
 
 	http.HandleFunc("/cars/registration", Controller.Registration)
 	http.HandleFunc("/cars/authentication", Controller.Authentication)
+	http.HandleFunc("/cars/validation", Controller.Validation)
+	http.HandleFunc("/cars/image", Controller.ImageController)
 
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }

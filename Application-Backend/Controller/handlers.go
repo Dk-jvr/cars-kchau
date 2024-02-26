@@ -15,20 +15,20 @@ func Registration(writer http.ResponseWriter, request *http.Request) {
 
 	writer.Header().Set("Content-Type", "application/json")
 	if err != nil {
-		Models.ErrMaker(writer, http.StatusBadRequest, err.Error(), "")
+		Models.ErrAuthMaker(writer, http.StatusBadRequest, err.Error(), "")
 		return
 	}
 	err = DataBase.CreateUser(user)
 	if err != nil {
-		Models.ErrMaker(writer, http.StatusInternalServerError, err.Error(), "")
+		Models.ErrAuthMaker(writer, http.StatusInternalServerError, err.Error(), "")
 		return
 	}
 	tokenStr, err = Models.CreateToken(user.Username)
 	if err != nil {
-		Models.ErrMaker(writer, http.StatusInternalServerError, err.Error(), "")
+		Models.ErrAuthMaker(writer, http.StatusInternalServerError, err.Error(), "")
 		return
 	}
-	Models.ErrMaker(writer, http.StatusOK, "", tokenStr)
+	Models.ErrAuthMaker(writer, http.StatusOK, "", tokenStr)
 	return
 }
 
@@ -38,21 +38,42 @@ func Authentication(writer http.ResponseWriter, request *http.Request) {
 	decoder := json.NewDecoder(request.Body)
 	err := decoder.Decode(&user)
 	if err != nil {
-		Models.ErrMaker(writer, http.StatusBadRequest, err.Error(), "")
+		Models.ErrAuthMaker(writer, http.StatusBadRequest, err.Error(), "")
 		return
 	}
 	isContain, username := DataBase.CheckUser(user)
 	if isContain {
 		tokenStr, err = Models.CreateToken(username)
 		if err != nil {
-			Models.ErrMaker(writer, http.StatusInternalServerError, err.Error(), "")
+			Models.ErrAuthMaker(writer, http.StatusInternalServerError, err.Error(), "")
 			return
 		}
-		Models.ErrMaker(writer, http.StatusOK, "", tokenStr)
+		Models.ErrAuthMaker(writer, http.StatusOK, "", tokenStr)
 		return
 
 	} else {
-		Models.ErrMaker(writer, http.StatusNotFound, "User Not Found...", "")
+		Models.ErrAuthMaker(writer, http.StatusNotFound, "User Not Found...", "")
 		return
 	}
+}
+
+func Validation(writer http.ResponseWriter, request *http.Request) {
+	body := make(map[string]string)
+	decoder := json.NewDecoder(request.Body)
+	err := decoder.Decode(&body)
+	if err != nil {
+		Models.ErrValidationMaker(writer, http.StatusInternalServerError, err.Error())
+		return
+	}
+	err = Models.TokenValidation(body["jwt"])
+	if err != nil {
+		Models.ErrValidationMaker(writer, http.StatusBadRequest, err.Error())
+		return
+	}
+	Models.ErrValidationMaker(writer, http.StatusOK, "")
+	return
+}
+
+func ImageController(writer http.ResponseWriter, request *http.Request) {
+
 }
