@@ -9,12 +9,17 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/golang-jwt/jwt/v5"
+	"io"
+	"mime/multipart"
 	"net/http"
+	"os"
 	"time"
 )
 
 var (
-	secretKey *ecdsa.PrivateKey
+	secretKey          *ecdsa.PrivateKey
+	defaultImage       = "QuOuK_wC9c8.jpg"
+	imagePathDirectory = "../cars-kchau/Application-Backend/ImageProfiles/"
 )
 
 func init() {
@@ -68,4 +73,35 @@ func TokenValidation(tokenStr string) error {
 	} else {
 		return errors.New("Invalid Token Error")
 	}
+}
+
+func AddImage(image multipart.File, header *multipart.FileHeader, writer http.ResponseWriter) error {
+	outFile, err := os.Create("../cars-kchau/Application-Backend/ImageProfiles/" + header.Filename)
+	if err != nil {
+		return err
+	}
+	defer outFile.Close()
+	_, err = io.Copy(outFile, image)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func IsDefaultImage(imageName string) bool {
+	return defaultImage == imageName
+}
+
+func DeleteImage(imageName string) error {
+	err := os.Remove(imagePathDirectory + imageName)
+	return err
+}
+
+func GetImage(imageName string) (*os.File, error) {
+	file, err := os.Open(imagePathDirectory + imageName)
+	return file, err
+}
+
+func GetGefaultImage() string {
+	return defaultImage
 }

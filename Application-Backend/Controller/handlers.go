@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"github.com/Dk-jvr/cars-kchau.git/DataBase"
 	"github.com/Dk-jvr/cars-kchau.git/Models"
+	"github.com/gorilla/mux"
+	"io"
 	"net/http"
 )
 
@@ -74,6 +76,71 @@ func Validation(writer http.ResponseWriter, request *http.Request) {
 	return
 }
 
-func ImageController(writer http.ResponseWriter, request *http.Request) {
+func UpdateImage(writer http.ResponseWriter, request *http.Request) {
+	switch request.Method {
+
+	case http.MethodPost:
+		var oldImage string
+		vars := mux.Vars(request)
+		username := vars["username"]
+		image, header, err := request.FormFile("image")
+		if err != nil {
+			http.Error(writer, err.Error(), http.StatusBadRequest)
+			return
+		}
+		defer image.Close()
+
+		err = Models.AddImage(image, header, writer)
+		if err != nil {
+			http.Error(writer, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		oldImage, err = DataBase.UpdateImage(username, header.Filename)
+		if err != nil {
+			http.Error(writer, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		if !Models.IsDefaultImage(oldImage) {
+			err = Models.DeleteImage(oldImage)
+			if err != nil {
+				http.Error(writer, err.Error(), http.StatusInternalServerError)
+				return
+			}
+		}
+		return
+
+	case http.MethodGet:
+		vars := mux.Vars(request)
+		username := vars["username"]
+		image, err := DataBase.GetImage(username)
+		if err != nil {
+			http.Error(writer, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		imageFile, err := Models.GetImage(image)
+		io.Copy(writer, imageFile)
+		return
+
+	case http.MethodDelete:
+		vars := mux.Vars(request)
+		username := vars["username"]
+		oldImage, err := DataBase.UpdateImage(username, Models.GetGefaultImage())
+		if err != nil {
+			http.Error(writer, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		if !Models.IsDefaultImage(oldImage) {
+			err = Models.DeleteImage(oldImage)
+			if err != nil {
+				http.Error(writer, err.Error(), http.StatusInternalServerError)
+				return
+			}
+		}
+		return
+
+	default:
+		http.Error(writer, "Method Not Allowed", http.StatusMethodNotAllowed)
+	}
 
 }

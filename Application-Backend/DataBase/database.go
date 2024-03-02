@@ -34,6 +34,7 @@ func CreateDataBase() error {
 			DROP TABLE IF EXISTS Users CASCADE ;
 			DROP TABLE IF EXISTS UserData;
 			DROP TABLE IF EXISTS UserCars;
+			DROP TABLE IF EXISTS UserPhoto;
 
 			CREATE TABLE IF NOT EXISTS Users (
 			    user_id UUID PRIMARY KEY,
@@ -60,6 +61,13 @@ func CreateDataBase() error {
 			  	CONSTRAINT FK_user_car FOREIGN KEY(user_id)
 			        REFERENCES Users(user_id)
 			);
+
+			CREATE TABLE IF NOT EXISTS UserPhoto (
+				user_id UUID PRIMARY KEY,
+				image_name TEXT NOT NULL DEFAULT 'QuOuK_wC9c8.jpg',
+				CONSTRAINT FK_user_photo FOREIGN KEY(user_id)
+			        REFERENCES Users(user_id)
+			);
 		`
 	_, err := db.Exec(createTables)
 	return err
@@ -67,13 +75,18 @@ func CreateDataBase() error {
 
 func CreateUser(user Models.User) error {
 	var err error
-	const queryString = `INSERT INTO Users VALUES ($1, $2, $3, $4);`
+	const queryInsertNewUser = `INSERT INTO Users VALUES ($1, $2, $3, $4);`
+	const queryInsertUserPhoto = `INSERT INTO UserPhoto VALUES($1);`
+
 	sha256Password := Models.HashPassword(user.Password)
-	go func(user Models.User, err error) {
-		dbMutex.Lock()
-		defer dbMutex.Unlock()
-		_, err = db.Exec(queryString, uuid.New(), user.Username, user.Email, sha256Password)
-	}(user, err)
+	user_id := uuid.New()
+	dbMutex.Lock()
+	defer dbMutex.Unlock()
+	_, err = db.Exec(queryInsertNewUser, user_id, user.Username, user.Email, sha256Password)
+	if err != nil {
+		return err
+	}
+	_, err = db.Exec(queryInsertUserPhoto, user_id)
 	return err
 }
 
@@ -90,4 +103,30 @@ func CheckUser(user Models.AuthUser) (bool, string) {
 	} else {
 		return false, ""
 	}
+}
+
+func UpdateImage(username, imageName string) (string, error) {
+	var oldImageName string
+	const queryUpdateUserPhoto = `WITH selectImage AS (
+		SELECT image_name FROM UserPhoto
+		WHERE user_id = (SELECT user_id FROM Users 
+		                        WHERE username = $1)
+	),
+	updateImage AS (
+		UPDATE UserPhoto
+		SET image_name = $2
+		WHERE user_id = (SELECT user_id FROM Users 
+		                        WHERE username = $1)
+	)
+	SELECT (SELECT image_name FROM selectImage);`
+	err := db.QueryRow(queryUpdateUserPhoto, username, imageName).Scan(&oldImageName)
+	return oldImageName, err
+}
+
+func GetImage(username string) (string, error) {
+	var image string
+	const querySelectImage = `SELECT image_name FROM UserPhoto
+		WHERE user_id = (SELECT user_id FROM Users WHERE username = $1)`
+	err := db.QueryRow(querySelectImage, username).Scan(&image)
+	return image, err
 }
