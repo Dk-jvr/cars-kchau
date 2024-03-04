@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/Dk-jvr/cars-kchau.git/Controller"
 	"github.com/Dk-jvr/cars-kchau.git/DataBase"
 	"github.com/gorilla/mux"
@@ -18,6 +19,6 @@ func main() {
 	router.HandleFunc("/cars/authentication", Controller.Authentication)
 	router.HandleFunc("/cars/validation", Controller.Validation)
 	router.HandleFunc("/cars/image/{username}", Controller.UpdateImage)
-
+	fmt.Println("Listening server in 8080 port...")
 	log.Fatal(http.ListenAndServe(":8080", router))
 }
