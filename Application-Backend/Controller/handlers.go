@@ -101,7 +101,7 @@ func UpdateImage(writer http.ResponseWriter, request *http.Request) {
 			return
 		}
 
-		if !Models.IsDefaultImage(oldImage) {
+		if !Models.IsDefaultImage(oldImage) && oldImage != header.Filename {
 			err = Models.DeleteImage(oldImage)
 			if err != nil {
 				http.Error(writer, err.Error(), http.StatusInternalServerError)
