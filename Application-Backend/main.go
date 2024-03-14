@@ -19,6 +19,8 @@ func main() {
 	router.HandleFunc("/cars/authentication", Controller.Authentication)
 	router.HandleFunc("/cars/validation", Controller.Validation)
 	router.HandleFunc("/cars/image/{username}", Controller.UpdateImage)
+	//router.HandleFunc("/cars/user/{username}", Controller.UserInfo)
+
 	fmt.Println("Listening server in 8080 port...")
 	log.Fatal(http.ListenAndServe(":8080", router))
 }

@@ -2,8 +2,10 @@ package Controller
 
 import (
 	"encoding/json"
+	"errors"
 	"github.com/Dk-jvr/cars-kchau.git/DataBase"
 	"github.com/Dk-jvr/cars-kchau.git/Models"
+	"github.com/go-playground/validator"
 	"github.com/gorilla/mux"
 	"io"
 	"net/http"
@@ -14,23 +16,34 @@ func Registration(writer http.ResponseWriter, request *http.Request) {
 	var tokenStr string
 	decoder := json.NewDecoder(request.Body)
 	err := decoder.Decode(&user)
+	validate := validator.New()
+	defer func() {
+		Models.ErrAuthMaker(writer, err)
+	}()
 
 	writer.Header().Set("Content-Type", "application/json")
+
 	if err != nil {
-		Models.ErrAuthMaker(writer, http.StatusBadRequest, err.Error(), "")
+		writer.WriteHeader(http.StatusBadRequest)
 		return
 	}
+	err = validate.Struct(user)
+	if err != nil {
+		writer.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
 	err = DataBase.CreateUser(user)
 	if err != nil {
-		Models.ErrAuthMaker(writer, http.StatusInternalServerError, err.Error(), "")
+		writer.WriteHeader(http.StatusConflict)
 		return
 	}
 	tokenStr, err = Models.CreateToken(user.Username)
 	if err != nil {
-		Models.ErrAuthMaker(writer, http.StatusInternalServerError, err.Error(), "")
+		writer.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	Models.ErrAuthMaker(writer, http.StatusOK, "", tokenStr)
+	Models.SetCookie(writer, tokenStr)
 	return
 }
 
@@ -39,28 +52,39 @@ func Authentication(writer http.ResponseWriter, request *http.Request) {
 	var tokenStr string
 	decoder := json.NewDecoder(request.Body)
 	err := decoder.Decode(&user)
+
+	defer func() {
+		Models.ErrAuthMaker(writer, err)
+	}()
+
 	if err != nil {
-		Models.ErrAuthMaker(writer, http.StatusBadRequest, err.Error(), "")
+		writer.WriteHeader(http.StatusBadRequest)
 		return
 	}
+
 	isContain, username := DataBase.CheckUser(user)
 	if isContain {
 		tokenStr, err = Models.CreateToken(username)
 		if err != nil {
-			Models.ErrAuthMaker(writer, http.StatusInternalServerError, err.Error(), "")
+			writer.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		Models.ErrAuthMaker(writer, http.StatusOK, "", tokenStr)
+		Models.SetCookie(writer, tokenStr)
 		return
 
 	} else {
-		Models.ErrAuthMaker(writer, http.StatusNotFound, "User Not Found...", "")
+		err = errors.New("user Not Found")
+		writer.WriteHeader(http.StatusNotFound)
 		return
 	}
 }
 
 func Validation(writer http.ResponseWriter, request *http.Request) {
 	body := make(map[string]string)
+
+	//TODO:подумать про получение токена, будем ли отдельно дергать ручку или же отправлять все сразу, лишаясь
+	//	моментальной валидации и перехода на страницу пользователя  (!!!)
+
 	decoder := json.NewDecoder(request.Body)
 	err := decoder.Decode(&body)
 	if err != nil {
@@ -77,12 +101,12 @@ func Validation(writer http.ResponseWriter, request *http.Request) {
 }
 
 func UpdateImage(writer http.ResponseWriter, request *http.Request) {
+	vars := mux.Vars(request)
+	username := vars["username"]
 	switch request.Method {
 
 	case http.MethodPost:
 		var oldImage string
-		vars := mux.Vars(request)
-		username := vars["username"]
 		image, header, err := request.FormFile("image")
 		if err != nil {
 			http.Error(writer, err.Error(), http.StatusBadRequest)
@@ -111,8 +135,6 @@ func UpdateImage(writer http.ResponseWriter, request *http.Request) {
 		return
 
 	case http.MethodGet:
-		vars := mux.Vars(request)
-		username := vars["username"]
 		image, err := DataBase.GetImage(username)
 		if err != nil {
 			http.Error(writer, err.Error(), http.StatusInternalServerError)
@@ -123,8 +145,7 @@ func UpdateImage(writer http.ResponseWriter, request *http.Request) {
 		return
 
 	case http.MethodDelete:
-		vars := mux.Vars(request)
-		username := vars["username"]
+
 		oldImage, err := DataBase.UpdateImage(username, Models.GetGefaultImage())
 		if err != nil {
 			http.Error(writer, err.Error(), http.StatusInternalServerError)
@@ -144,3 +165,18 @@ func UpdateImage(writer http.ResponseWriter, request *http.Request) {
 	}
 
 }
+
+/*func UserInfo(writer http.ResponseWriter, request *http.Request) {
+	vars := mux.Vars(request)
+	username := vars["username"]
+
+	switch request.Method {
+	case http.MethodPost:
+
+	case http.MethodGet:
+
+	default:
+		http.Error(writer, "Method Not Allowed", http.StatusMethodNotAllowed)
+	}
+
+}*/

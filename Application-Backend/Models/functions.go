@@ -43,12 +43,25 @@ func CreateToken(username string) (string, error) {
 	return tokenStr, err
 }
 
-func ErrAuthMaker(writer http.ResponseWriter, httpStatus int, err string, tokenStr string) {
+func SetCookie(writer http.ResponseWriter, tokenStr string) {
+	cookie := &http.Cookie{
+		Name:     "jwt",
+		Value:    tokenStr,
+		Expires:  time.Now().Add(time.Hour * 1),
+		HttpOnly: true,
+		Secure:   true,
+	}
+	http.SetCookie(writer, cookie)
+}
+
+func ErrAuthMaker(writer http.ResponseWriter, err error) {
 	response := make(map[string]string)
-	response["jwt"] = tokenStr
-	response["Error"] = err
+	if err == nil {
+		response["err"] = "null"
+	} else {
+		response["err"] = err.Error()
+	}
 	jsonResponse, _ := json.Marshal(response)
-	writer.WriteHeader(httpStatus)
 	writer.Write(jsonResponse)
 }
 
